@@ -1,0 +1,29 @@
+#!/usr/bin/env lua
+
+local function install_deps(deps)
+  print("Installing deps")
+  for _, dep in ipairs(deps) do
+  os.execute(string.format("%s --lua-version %s --tree %s install %s",
+    "luarocks",
+    "5.4",
+    ".luarocks",
+    dep))
+  end
+end
+
+local function test(...)
+  os.execute(".luarocks/bin/busted " .. table.concat(table.pack(...), " "))
+end
+
+local command = arg[1]
+
+if command == "deps" then
+  install_deps {
+    "busted",
+    "luacov"
+  }
+elseif command == "test" then
+  test(select(2, table.unpack(arg)))
+else
+  print("Unknown command: `" .. command .. "`")
+end
