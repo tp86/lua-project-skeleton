@@ -1,29 +1,52 @@
 #!/usr/bin/env lua
 
-local function install_deps(deps)
-  print("Installing deps")
-  for _, dep in ipairs(deps) do
-  os.execute(string.format("%s --lua-version %s --tree %s install %s",
-    "luarocks",
-    "5.4",
-    ".luarocks",
-    dep))
+local devdeps = { "busted", "luacov" }
+
+local luaversion = string.match(_VERSION, "Lua (.+)")
+local luarocksdir = ".luarocks"
+
+local function execwithparams(cmd, args)
+  local command = {
+    cmd,
+    table.unpack(args)
+  }
+  os.execute(table.concat(command, " "))
+end
+
+local function localbin(cmd)
+  return luarocksdir .. "/bin/" .. cmd
+end
+
+local function run(commands)
+  local command = arg[1]
+  local cmd = commands[command]
+  local cmdargs = table.pack(select(2, table.unpack(arg)))
+
+  if cmd then
+    cmd(cmdargs)
+  else
+    print("Unknown command: `" .. command .."`")
   end
 end
 
-local function test(...)
-  os.execute(".luarocks/bin/busted " .. table.concat(table.pack(...), " "))
+local function install_deps(deps)
+  print("Installing deps")
+  for _, dep in ipairs(deps) do
+    execwithparams("luarocks", { "--lua-version", luaversion,
+                                 "--tree", luarocksdir,
+                                 "install",
+                                 dep
+                               })
+  end
 end
 
-local command = arg[1]
-
-if command == "deps" then
-  install_deps {
-    "busted",
-    "luacov"
-  }
-elseif command == "test" then
-  test(select(2, table.unpack(arg)))
-else
-  print("Unknown command: `" .. command .. "`")
+local function test(args)
+  execwithparams(localbin("busted"), args)
 end
+
+local commands = {
+  devdeps = function() install_deps(devdeps) end,
+  test = function(args) test(args) end,
+}
+
+run(commands)
